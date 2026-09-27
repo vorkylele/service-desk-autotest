@@ -1,0 +1,36 @@
+# Полный стенд для автотестов: база данных, серверная и клиентская части.
+# Три репозитория должны быть склонированы в одну папку:
+#   service-desk-backend/  service-desk-frontend/  service-desk-autotest/
+# Запуск:  docker compose -f docker-compose.full.yml up -d --build
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: servicedesk
+      POSTGRES_USER: servicedesk
+      POSTGRES_PASSWORD: servicedesk
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U servicedesk"]
+      interval: 3s
+      retries: 20
+
+  backend:
+    build: ../service-desk-backend
+    environment:
+      SERVICEDESK_DB_URL: jdbc:postgresql://db:5432/servicedesk
+      # часы стенда стартуют в понедельник 21.09.2026 в рабочее время: сценарии зависят от рабочего календаря
+      SERVICEDESK_CLOCK_STARTAT: "2026-09-21T10:19:56"
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ../service-desk-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
